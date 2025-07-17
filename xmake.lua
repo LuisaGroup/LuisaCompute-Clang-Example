@@ -18,10 +18,10 @@ end
 
 lc_options = {
     cpu_backend = false,
-    cuda_backend = false,
+    cuda_backend = true,
     dx_backend = is_host("windows"),
     vk_backend = is_host("windows"),
-    enable_cuda = false,
+    enable_cuda = true,
     enable_api = false,
     enable_clangcxx = true,
     enable_dsl = true,

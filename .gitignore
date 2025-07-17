@@ -326,3 +326,4 @@ scripts/options.cmake
 FidelityFX-FSR2/
 xess/
 !xrepo/**
+!.vscode/settings.json

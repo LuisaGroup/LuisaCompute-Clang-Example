@@ -104,5 +104,8 @@ function install_lc(llvm_path)
 end
 
 function main(llvm_path)
+    print("install lc sdk")
+    local setup = import("setup", {rootdir = "LuisaCompute"})
+    setup.main("LuisaCompute/SDKs")
     install_lc(llvm_path)
 end
