@@ -1,0 +1,4 @@
+[submodule "LuisaCompute"]
+	path = LuisaCompute
+	url = https://github.com/LuisaGroup/LuisaCompute
+	branch = next
