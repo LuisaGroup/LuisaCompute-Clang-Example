@@ -39,5 +39,5 @@ lc_options = {
 }
 includes("LuisaCompute")
 includes("compiler")
-includes("samples")
-includes("shaders")
+-- includes("samples")
+-- includes("shaders")
