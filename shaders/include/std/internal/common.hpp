@@ -69,21 +69,11 @@ using remove_cv_t = typename remove_cv<T>::type;
 
 template<class T>
 trait_struct remove_reference {
-	using type = T;
+	using type = __remove_reference_t(T);
 };
 
 template<class T>
-trait_struct remove_reference<T&> {
-	using type = T;
-};
-
-template<class T>
-trait_struct remove_reference<T&&> {
-	using type = T;
-};
-
-template<class T>
-using remove_reference_t = typename remove_reference<T>::type;
+using remove_reference_t = __remove_reference_t(T);
 
 template<class T, class... Ts>
 constexpr bool is_any_of_v = (is_same_v<T, Ts> || ...);

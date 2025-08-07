@@ -39,7 +39,7 @@ public:
 	[[noignore]] constexpr void set(T v) { set(start, v); }
 	[[noignore]] constexpr void set(size_t loc, T v) { operator[](loc) = v; }
 
-	constexpr void fill(const T& u) {
+	[[noignore]] constexpr void fill(const T& u) {
 		for (size_t i = 0; i < N; ++i) {
 			v[i] = u;
 		}
@@ -63,13 +63,13 @@ public:
 	// constexpr const_reverse_iterator crend() const noexcept;
 
 	// capacity
-	[[nodiscard]] static constexpr bool empty() noexcept {
+	[[nodiscard]] [[noignore]] constexpr bool empty() noexcept {
 		return false;
 	}
-	[[nodiscard]] static constexpr size_type size() noexcept {
+	[[nodiscard]] [[noignore]] constexpr size_type size() noexcept {
 		return N;
 	}
-	[[nodiscard]] static constexpr size_type max_size() noexcept {
+	[[nodiscard]] [[noignore]] constexpr size_type max_size() noexcept {
 		return N;
 	}
 

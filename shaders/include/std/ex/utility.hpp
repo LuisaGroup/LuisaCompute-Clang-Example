@@ -146,7 +146,11 @@ trait_struct visit_strategy<N, 0>{
 }// namespace stdex
 }
 ;
-
+#ifndef __SHADER_LANG__
+inline void force_case() {}
+#else
+[[callop("FORCE_CASE")]] extern void force_case();// make next switch force-case (no if else)
+#endif
 #ifndef O_VISIT_CASE
 #define O_VISIT_CASE(n)                                                                          \
 	case (n):                                                                                    \
@@ -158,6 +162,7 @@ trait_struct visit_strategy<N, 0>{
 
 #define O_VISIT_STAMP(stamper, n)           \
 	static_assert(N > (n) / 4 && N <= (n)); \
+	force_case();                           \
 	switch (idx) {                          \
 		stamper(0, O_VISIT_CASE);           \
 		default:                            \
@@ -193,7 +198,9 @@ trait_struct visit_strategy<N, 1>{
 	static constexpr Ret invoke(size_t idx, Fn&& fn, Args&&... args){
 		O_STAMP(4, O_VISIT_STAMP);
 #ifdef __SHADER_LANG__
-return Ret();// make compiler happy
+if constexpr (!std::is_void_v<Ret>) {
+	return Ret();// make compiler happy
+}
 #endif
 }
 }
@@ -205,7 +212,9 @@ trait_struct visit_strategy<N, 2>{
 	static constexpr Ret invoke(size_t idx, Fn&& fn, Args&&... args){
 		O_STAMP(16, O_VISIT_STAMP);
 #ifdef __SHADER_LANG__
-return Ret();// make compiler happy
+if constexpr (!std::is_void_v<Ret>) {
+	return Ret();// make compiler happy
+}
 #endif
 }
 }
@@ -217,7 +226,9 @@ trait_struct visit_strategy<N, 3>{
 	static constexpr Ret invoke(size_t idx, Fn&& fn, Args&&... args){
 		O_STAMP(64, O_VISIT_STAMP);
 #ifdef __SHADER_LANG__
-return Ret();// make compiler happy
+if constexpr (!std::is_void_v<Ret>) {
+	return Ret();// make compiler happy
+}
 #endif
 }
 }
@@ -229,7 +240,9 @@ trait_struct visit_strategy<N, 4>{
 	static constexpr Ret invoke(size_t idx, Fn&& fn, Args&&... args){
 		O_STAMP(256, O_VISIT_STAMP);
 #ifdef __SHADER_LANG__
-return Ret();// make compiler happy
+if constexpr (!std::is_void_v<Ret>) {
+	return Ret();// make compiler happy
+}
 #endif
 }
 }

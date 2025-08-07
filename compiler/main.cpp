@@ -106,7 +106,9 @@ int compile(
     bool use_optimize,
     bool enable_debug_info,
     bool ue,
-    luisa::string virtual_path) {
+    luisa::string virtual_path,
+    luisa::filesystem::path project_path,
+    luisa::filesystem::path ue_host_path) {
 
     if (dst_path.empty()) {
         dst_path = src_path.filename();
@@ -124,6 +126,23 @@ int compile(
             } else {
                 dst_path.replace_extension("bin");
             }
+        }
+    }
+    auto curr_path = luisa::filesystem::current_path();
+    auto bin_path = get_binary_path();
+    if (ue) {
+        if (!project_path.is_absolute()) {
+            project_path = (curr_path / project_path).lexically_normal();
+        }
+        if (!ue_host_path.is_absolute()) {
+            ue_host_path = (project_path / ue_host_path).lexically_normal();
+        }
+        if (!dst_path.is_absolute()) {
+            dst_path = (project_path / dst_path).lexically_normal();
+        }
+
+        if (!luisa::filesystem::exists(ue_host_path) && !ue_host_path.empty()) {
+            luisa::filesystem::create_directories(ue_host_path);
         }
     }
     // format_path();
@@ -144,12 +163,12 @@ int compile(
         return 1;
     }
     if (ue) {
-        auto bin_path = get_binary_path();
-        auto shader_name = luisa::to_string(dst_path.filename());
-        auto base_path = dst_path;
-        base_path.replace_extension();
-        auto base_path_str = luisa::to_string(base_path);
-        UERDGBindGen::gen_compute_bind(virtual_path, shader_name, bin_path / "gen_template.h", bin_path / "gen_template.cpp", refl, base_path_str);
+        auto shader_name = luisa::to_string(dst_path.replace_extension("").filename());
+        auto relative_dst_path = luisa::filesystem::relative(dst_path, project_path);
+        // LUISA_WARNING("dst_path {}", luisa::to_string(dst_path));
+        // LUISA_WARNING("ue_host_path {}", luisa::to_string(ue_host_path));
+        // LUISA_WARNING("shader_name {}", shader_name);
+        UERDGBindGen::gen_compute_bind(virtual_path, shader_name, bin_path / "gen_template.h", bin_path / "gen_template.cpp", refl, ue_host_path);
     }
     return 0;
 }
@@ -194,12 +213,29 @@ public:
         std::filesystem::path local_path{name};
         if (local_path.is_absolute()) {
             str = name;
+        } else {
+            str = luisa::to_string(ctx.runtime_directory() / name);
         }
-        str = luisa::to_string(ctx.runtime_directory() / name);
+        luisa::filesystem::path str_path{str};
+        if (str_path.has_parent_path()) {
+            luisa::filesystem::create_directories(str_path.parent_path());
+        }
+        auto include_path = "#include \"/Engine/Public/Platform.ush\"\n"sv;
+        {
+            BinaryFileStream file_stream(str);
+            if (file_stream.valid() && file_stream.length() == include_path.size() + data.size()) {
+                luisa::vector<std::byte> disk_data;
+                disk_data.push_back_uninitialized(file_stream.length());
+                file_stream.read(disk_data);
+                if (std::memcmp(include_path.data(), disk_data.data(), include_path.size()) == 0 &&
+                    std::memcmp(data.data(), disk_data.data() + include_path.size(), data.size()) == 0) {
+                    return name;
+                }
+            }
+        }
 
         auto f = fopen(str.c_str(), "wb");
         if (f) {
-            auto include_path = "#include \"/Engine/Public/Platform.ush\"\n"sv;
             fwrite(include_path.data(), include_path.size(), 1, f);
             fwrite(data.data(), data.size(), 1, f);
             fclose(f);
@@ -241,6 +277,8 @@ int main(int argc, char *argv[]) {
     bool use_optimize = true;
     bool enable_debug_info = false;
     luisa::filesystem::path ue_virtual_path;
+    luisa::filesystem::path project_path;
+    luisa::filesystem::path ue_host_path;
     {
         bool enable_help = false;
         bool enable_lsp = false;
@@ -268,6 +306,16 @@ int main(int argc, char *argv[]) {
             "help"sv,
             [&](string_view name) {
                 enable_help = true;
+            });
+        cmds.emplace(
+            "project_path"sv,
+            [&](string_view name) {
+                project_path = name;
+            });
+        cmds.emplace(
+            "ue_host_path"sv,
+            [&](string_view name) {
+                ue_host_path = name;
             });
         cmds.emplace(
             "ue_virtual_path"sv,
@@ -394,6 +442,8 @@ Argument list:
     --include: include file directory, E.g --include=./shader_dir/
     --D: shader predefines, this can be set multiple times, E.g --D=MY_MACRO
     --lsp: enable compile_commands.json generation, E.g --lsp
+    --ue_host_path: UE global shader *.h & *.cpp path
+    --project_path: shader's source project path for relative path
 )"sv;
             std::cout << helplist << '\n';
             return 0;
@@ -610,13 +660,16 @@ Argument list:
                         else
                             local_out_path.replace_extension(".bin");
                         vec_datas.emplace_back(argv[0]);
+                        vec_datas.emplace_back(luisa::format("-project_path={}", luisa::to_string(project_path)));
+                        if (!ue_host_path.empty()) {
+                            vec_datas.emplace_back(luisa::format("-ue_host_path={}", luisa::to_string(ue_host_path / file_path.parent_path())));
+                        }
                         vec_datas.emplace_back(luisa::format("-opt={}", use_optimize ? "on"sv : "off"sv));
                         if (enable_debug_info) {
                             vec_datas.emplace_back("-debug"sv);
                         }
                         if (!ue_virtual_path.empty()) {
                             vec_datas.emplace_back(luisa::format("-ue_virtual_path={}", luisa::to_string(ue_virtual_path / file_path.parent_path())));
-                            LUISA_WARNING("-ue_virtual_path={}", luisa::to_string(ue_virtual_path / file_path.parent_path()));
                         }
                         vec_datas.emplace_back(luisa::format("-backend={}", backend));
                         vec_datas.emplace_back(luisa::format("-in={}", luisa::to_string(src_file_path)));
@@ -759,8 +812,8 @@ Argument list:
     }
     auto device = context.create_device(backend, &config);
     return compile(
-        src_path,
-        dst_path,
+        std::move(src_path),
+        std::move(dst_path),
         device,
         defines,
         {},
@@ -768,5 +821,7 @@ Argument list:
         use_optimize,
         enable_debug_info,
         !ue_virtual_path.empty(),
-        luisa::to_string(ue_virtual_path));
+        luisa::to_string(ue_virtual_path),
+        std::move(project_path),
+        std::move(ue_host_path));
 }

@@ -48,9 +48,10 @@ void UERDGBindGen::gen_compute_bind(
     luisa::filesystem::path const &header_template_path,
     luisa::filesystem::path const &impl_template_path,
     luisa::clangcxx::ShaderReflection const &refl,
-    luisa::filesystem::path const &base_name) {
+    luisa::filesystem::path const &host_output_path) {
     MapType func_map;
-    auto class_name = "F" + luisa::to_string(base_name.filename());
+    luisa::string class_name = "F";
+    class_name += shader_name;
     if (class_name[1] >= 'a' && class_name[1] <= 'z') {
         class_name[1] -= 'a' - 'A';
     }
@@ -171,7 +172,7 @@ void UERDGBindGen::gen_compute_bind(
                     sb << luisa::format(", {}>", type->element()->alignment());
                 }
                 sb << ", " << luisa::format("{}", type->dimension()) << '>';
-                
+
             } break;
             case Type::Tag::STRUCTURE: {
                 auto iter = struct_type.find(type);
@@ -341,7 +342,7 @@ void UERDGBindGen::gen_compute_bind(
         if (p.empty() || p.back() != '/') {
             sb << '/';
         }
-        sb << shader_name;
+        sb << shader_name << ".usf";
     });
     func_map.emplace("groupSize", [&](vstd::StringBuilder &sb) {
         sb << luisa::format("{}, {}, {}", refl.block_size.x, refl.block_size.y, refl.block_size.z);
@@ -353,21 +354,33 @@ void UERDGBindGen::gen_compute_bind(
         file_stream.read(data);
         codegen(sb, func_map, luisa::string_view{(char const *)data.data(), data.size()}, '$');
     }
-    luisa::filesystem::path header_file_path{base_name};
+    luisa::filesystem::path header_file_path{host_output_path / shader_name};
     header_file_path.replace_extension(".h");
     auto header_file_path_str = luisa::to_string(header_file_path);
     for (auto &i : header_file_path_str) {
         if (i == '\\') i = '/';
     }
-    {
-        auto f = fopen(header_file_path_str.c_str(), "wb");
+    auto test_write = [](luisa::string const &path, luisa::span<std::byte const> data) {
+        {
+            BinaryFileStream file_stream(path);
+            if (file_stream.valid() && file_stream.length() == data.size()) {
+                luisa::vector<std::byte> disk_data;
+                disk_data.push_back_uninitialized(file_stream.length());
+                file_stream.read(disk_data);
+                if (std::memcmp(data.data(), disk_data.data(), data.size()) == 0) {
+                    return;
+                }
+            }
+        }
+        auto f = fopen(path.c_str(), "wb");
         if (f) {
-            fwrite(sb.data(), sb.size(), 1, f);
+            fwrite(data.data(), data.size(), 1, f);
             fclose(f);
         } else {
-            LUISA_ERROR("Write to file {} failed.", header_file_path_str);
+            LUISA_ERROR("Write to file {} failed.", path);
         }
-    }
+    };
+    test_write(header_file_path_str, luisa::span{(std::byte *)sb.data(), sb.size()});
     sb.clear();
     {
         sb << "#include \"" << luisa::to_string(header_file_path.filename()) << "\"\n";
@@ -378,15 +391,9 @@ void UERDGBindGen::gen_compute_bind(
         codegen(sb, func_map, luisa::string_view{(char const *)data.data(), data.size()}, '$');
     }
     {
-        luisa::filesystem::path impl_file_path{base_name};
+        luisa::filesystem::path impl_file_path{host_output_path / shader_name};
         impl_file_path.replace_extension(".cpp");
         auto impl_file_path_str = luisa::to_string(impl_file_path);
-        auto f = fopen(impl_file_path_str.c_str(), "wb");
-        if (f) {
-            fwrite(sb.data(), sb.size(), 1, f);
-            fclose(f);
-        } else {
-            LUISA_ERROR("Write to file {} failed.", impl_file_path_str);
-        }
+        test_write(impl_file_path_str, luisa::span{(std::byte *)sb.data(), sb.size()});
     }
 }

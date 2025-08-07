@@ -2,6 +2,8 @@
 #include "./../attributes.hpp"
 #include "builtins.hpp"
 
+#include <std/type_traits>
+
 namespace luisa::shader {
 
 trait_struct ArrayFlags {
@@ -33,21 +35,21 @@ struct IndirectBuffer;
 
 namespace detail {
 template<class T>
-trait_struct vec_or_matrix : public false_type {
+trait_struct vec_or_matrix : public std::false_type {
 	using scalar_type = T;
 	static constexpr bool is_vec = false;
 	static constexpr bool is_matrix = false;
 };
 
 template<class T, uint64 N>
-trait_struct vec_or_matrix<vec<T, N>> : public true_type {
+trait_struct vec_or_matrix<vec<T, N>> : public std::true_type {
 	using scalar_type = T;
 	static constexpr bool is_vec = true;
 	static constexpr bool is_matrix = false;
 };
 
 template<uint64 N>
-trait_struct vec_or_matrix<matrix<N>> : public true_type {
+trait_struct vec_or_matrix<matrix<N>> : public std::true_type {
 	using scalar_type = float;
 	static constexpr bool is_vec = false;
 	static constexpr bool is_matrix = true;
@@ -65,37 +67,43 @@ trait_struct is_char<const char (&)[n]> {
 }// namespace detail
 
 template<typename T>
-using scalar_type = typename detail::vec_or_matrix<decay_t<T>>::scalar_type;
+using scalar_type = typename detail::vec_or_matrix<std::decay_t<T>>::scalar_type;
+
+template<typename T, template<typename, uint32> typename Template>
+inline constexpr bool is_specialization_resource_v = false;// true if && only if T is a specialization of Template
+
+template<template<typename, uint32> typename Template, typename Arg>
+inline constexpr bool is_specialization_resource_v<Template<Arg, 0u>, Template> = true;
 
 template<typename T>
-static constexpr bool is_scalar_v = !detail::vec_or_matrix<decay_t<T>>::is_vec;
+static constexpr bool is_scalar_v = !detail::vec_or_matrix<std::decay_t<T>>::is_vec;
 
 template<typename T>
-static constexpr bool is_vec_v = detail::vec_or_matrix<decay_t<T>>::is_vec;
+static constexpr bool is_vec_v = detail::vec_or_matrix<std::decay_t<T>>::is_vec;
 
 template<typename T>
-static constexpr bool is_matrix_v = detail::vec_or_matrix<decay_t<T>>::is_matrix;
+static constexpr bool is_matrix_v = detail::vec_or_matrix<std::decay_t<T>>::is_matrix;
 
 template<typename T>
-static constexpr bool is_vec_or_matrix_v = detail::vec_or_matrix<decay_t<T>>::value;
+static constexpr bool is_vec_or_matrix_v = detail::vec_or_matrix<std::decay_t<T>>::value;
 
 template<typename T>
 inline constexpr bool is_buffer_v = is_specialization_resource_v<T, Buffer>;
 
 template<typename T>
-static constexpr bool is_float_family_v = is_same_v<scalar_type<T>, float> | is_same_v<scalar_type<T>, double> | is_same_v<scalar_type<T>, half>;
+static constexpr bool is_float_family_v = std::is_same_v<scalar_type<T>, float> | std::is_same_v<scalar_type<T>, double> | std::is_same_v<scalar_type<T>, half>;
 
 template<typename T>
-static constexpr bool is_sint_family_v = is_same_v<scalar_type<T>, int16> | is_same_v<scalar_type<T>, int32> | is_same_v<scalar_type<T>, int64>;
+static constexpr bool is_sint_family_v = std::is_same_v<scalar_type<T>, int16> | std::is_same_v<scalar_type<T>, int32> | std::is_same_v<scalar_type<T>, int64>;
 
 template<typename T>
-static constexpr bool is_uint_family_v = is_same_v<scalar_type<T>, uint16> | is_same_v<scalar_type<T>, uint32> | is_same_v<scalar_type<T>, uint64>;
+static constexpr bool is_uint_family_v = std::is_same_v<scalar_type<T>, uint16> | std::is_same_v<scalar_type<T>, uint32> | std::is_same_v<scalar_type<T>, uint64>;
 
 template<typename T>
 static constexpr bool is_int_family_v = is_sint_family_v<T> || is_uint_family_v<T>;
 
 template<typename T>
-static constexpr bool is_bool_family_v = is_same_v<scalar_type<T>, bool>;
+static constexpr bool is_bool_family_v = std::is_same_v<scalar_type<T>, bool>;
 
 template<typename T>
 static constexpr bool is_arithmetic_v = is_float_family_v<T> || is_bool_family_v<T> || is_int_family_v<T>;

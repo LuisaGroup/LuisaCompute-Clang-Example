@@ -3,6 +3,8 @@
 #include "type_traits/builtins.hpp"
 #include "type_traits/concepts.hpp"
 
+#include <std/type_traits>
+
 namespace luisa::shader {
 
 namespace detail {
@@ -21,7 +23,7 @@ template<typename T, typename ElemType, uint64 N>
 trait_struct copy_dim<T, vec<ElemType, N>> { using type = vec<T, N>; };
 
 template<typename T>
-[[ignore]] constexpr uint64 vec_dim_v = detail::vec_dim<decay_t<T>>::value;
+[[ignore]] constexpr uint64 vec_dim_v = detail::vec_dim<std::decay_t<T>>::value;
 
 template<typename T, typename U>
 [[ignore]] constexpr bool same_dim_v = (vec_dim_v<T> == vec_dim_v<U>);

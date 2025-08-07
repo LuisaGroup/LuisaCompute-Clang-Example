@@ -5,6 +5,7 @@
 #include "./../types/matrix.hpp"
 
 #include <std/type_traits>
+#include <std/array>
 
 namespace luisa::shader {
 
@@ -272,13 +273,13 @@ auto sign(T v) {
 
 template<concepts::float_family T>
 constexpr T rcp(T t) {
-	return T(1.f) / t;
+	return T(1.0f) / t;
 }
 
 template<concepts::float_family T>
 constexpr T inverse_smoothstep(T y) { return T(0.5f) - sin(asin(T(1.0f) - T(2.0f) * y) / T(3.0f)); }
 
-inline float abgam(float x) {
+inline float lgamma(float x) {
 	constexpr float const gam0 = 1.0f / 12.0f;
 	constexpr float const gam1 = 1.0f / 30.0f;
 	constexpr float const gam2 = 53.0f / 210.0f;
@@ -290,14 +291,59 @@ inline float abgam(float x) {
 	return 0.5f * log(2 * pi) - x + (x - 0.5f) * log(x) + gam0 / (x + gam1 / (x + gam2 / (x + gam3 / (x + gam4 / (x + gam5 / (x + gam6 / x))))));
 }
 
-inline float gamma(float x) {
+inline float tgamma(float x) {
 	float result;
-	result = exp(abgam(x + 5)) / (x * (x + 1) * (x + 2) * (x + 3) * (x + 4));
+	result = exp(lgamma(x + 5)) / (x * (x + 1) * (x + 2) * (x + 3) * (x + 4));
 	return result;
 }
 
 inline float beta(float m, float n) {
-	return (gamma(m) * gamma(n) / gamma(m + n));
+	return (tgamma(m) * tgamma(n) / tgamma(m + n));
+}
+
+template<concepts::float_family T>
+inline T sinc(const T& v) {
+	return ite(v == T(0), T(1), sin(v) / v);
+}
+
+inline float factorial(uint n) {
+	return tgamma(float(n + 1));
+}
+
+// Bessel functions of the first kind, of order nu
+
+// This is a good rational approximation for non-negative integer orders, where roughly |x|<nu. Not supported for |nu|>=7.
+// ! Numerically unstable for large x.
+inline float cyl_bessel_j_saa(int nu, float x) {
+	if (nu >= 7)
+		return 0.0f;
+	const float x2 = sqr(x);
+	const float x4 = sqr(x2);
+	const float x6 = x2 * x4;
+	const float x8 = sqr(x4);
+
+	const float s = 6.0f * pow(x / 2.0f, (float)nu);
+	const float a = 1.0f / (6.0f * factorial(nu));
+	const float b = -x2 / (24.0f * factorial(nu + 1));
+	const float c1 = 11.0f * x8 - 864.0f * (6 + nu) * (x6 - 12.0f * (5.0f + nu) * (3.0f * x4 + 32.0f * (4 + nu) * (-2.0f * x2 + 27.0f * (3 + nu))));
+	const float c = c1 / float(factorial(6 + nu)) * x4 * 5.652695401144601e-10f;
+	return s * (a + b + c);
+}
+// This is a good approximation for x>>|nu|
+inline float cyl_bessel_j_laa(int nu, float x) {
+	return sqrt((2.0f / pi) / x) * cos(x - nu * (pi / 2.0f) - pi / 4.0f);
+}
+// Interpolate between the two
+inline float cyl_bessel_j(int nu, float x) {
+	const float t = nu > 0 || (-nu) % 2 == 0 ? 1.0f : -1.0f;
+	nu = abs(nu);
+
+	float cutoff = float(nu) + 1.0f;
+	float interp = cutoff / 10.0f;
+	float laa = cyl_bessel_j_laa(nu, x);
+	return (nu >= 7 || abs(x) >= cutoff + interp) ?
+			   laa * t :
+			   lerp(cyl_bessel_j_saa(nu, x), laa, max(.0f, min(1.0f, 0.5f * (x - cutoff - interp) / interp))) * t;
 }
 
 }// namespace luisa::shader

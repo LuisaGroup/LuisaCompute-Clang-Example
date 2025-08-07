@@ -112,40 +112,59 @@ template<class... T>
 using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 // // class template pair
-// template<class T1, class T2>
-// struct pair {
-// 	using first_type = T1;
-// 	using second_type = T2;
+template<class T1, class T2>
+struct pair {
+	using first_type = T1;
+	using second_type = T2;
 
-// 	T1 first;
-// 	T2 second;
+	T1 first;
+	T2 second;
 
-// 	pair(const pair&) = default;
-// 	pair(pair&&) = default;
-// 	// constexpr explicit(/* see description */) pair();
-// 	// constexpr explicit(/* see description */) pair(const T1& x, const T2& y);
-// 	// template<class U1 = T1, class U2 = T2>
-// 	// constexpr explicit(/* see description */) pair(U1&& x, U2&& y);
-// 	// template<class U1, class U2>
-// 	// constexpr explicit(/* see description */) pair(const pair<U1, U2>& p);
-// 	// template<class U1, class U2>
-// 	// constexpr explicit(/* see description */) pair(pair<U1, U2>&& p);
-// 	// template<class... Args1, class... Args2>
-// 	// constexpr pair(piecewise_construct_t,
-// 	// 			   tuple<Args1...> first_args, tuple<Args2...> second_args);
+	// pair(pair const&) = default;
+	// pair(pair&&) = default;
 
-// 	// constexpr pair& operator=(const pair& p);
-// 	// template<class U1, class U2>
-// 	// constexpr pair& operator=(const pair<U1, U2>& p);
-// 	// constexpr pair& operator=(pair&& p) noexcept(/* see description */);
-// 	// template<class U1, class U2>
-// 	// constexpr pair& operator=(pair<U1, U2>&& p);
+	constexpr pair() noexcept(is_constructible_v<first_type> && is_constructible_v<second_type>)
+		: first(), second() {}
 
-// 	// constexpr void swap(pair& p) noexcept(/* see description */);
-// };
+	template<class U1 = T1, class U2 = T2>
+	constexpr pair(
+		U1&& val1,
+		U2&& val2) noexcept(is_constructible_v<first_type, U1> && is_constructible_v<second_type, U2>)
+		: first(static_cast<U1&&>(val1)), second(static_cast<U2&&>(val2)) {}
 
-// template<class T1, class T2>
-// pair(T1, T2) -> pair<T1, T2>;
+	template<size_t I>
+	auto get() const -> conditional_t<I == 1, second_type, first_type> {
+		if constexpr (I == 1) {
+			return second;
+		} else {
+			return first;
+		}
+	}
+
+	// constexpr explicit(/* see description */) pair();
+	// constexpr explicit(/* see description */) pair(const T1& x, const T2& y);
+	// template<class U1 = T1, class U2 = T2>
+	// constexpr explicit(/* see description */) pair(U1&& x, U2&& y);
+	// template<class U1, class U2>
+	// constexpr explicit(/* see description */) pair(const pair<U1, U2>& p);
+	// template<class U1, class U2>
+	// constexpr explicit(/* see description */) pair(pair<U1, U2>&& p);
+	// template<class... Args1, class... Args2>
+	// constexpr pair(piecewise_construct_t,
+	// 			   tuple<Args1...> first_args, tuple<Args2...> second_args);
+
+	// constexpr pair& operator=(const pair& p);
+	// template<class U1, class U2>
+	// constexpr pair& operator=(const pair<U1, U2>& p);
+	// constexpr pair& operator=(pair&& p) noexcept(/* see description */);
+	// template<class U1, class U2>
+	// constexpr pair& operator=(pair<U1, U2>&& p);
+
+	// constexpr void swap(pair& p) noexcept(/* see description */);
+};
+
+template<class T1, class T2>
+pair(T1, T2) -> pair<T1, T2>;
 
 // // pair specialized algorithms
 // template<class T1, class T2>
@@ -161,16 +180,28 @@ using index_sequence_for = make_index_sequence<sizeof...(T)>;
 // template<class T1, class T2>
 // constexpr /* see description */ make_pair(T1&&, T2&&);
 
+template<class first_type, class second_type>
+constexpr pair<remove_cvref_t<first_type>, remove_cvref_t<second_type>> make_pair(first_type&& first, second_type&& second) {
+	return {static_cast<first_type&&>(first), static_cast<second_type&&>(second)};
+}
+
 // tuple-like access to pair
 template<class T>
 trait_struct tuple_size;
 template<size_t I, class T>
 trait_struct tuple_element;
 
-// template<class T1, class T2>
-// struct tuple_size<pair<T1, T2>>;
-// template<size_t I, class T1, class T2>
-// struct tuple_element<I, pair<T1, T2>>;
+template<class T1, class T2>
+trait_struct tuple_size<pair<T1, T2>> : integral_constant<size_t, 2>{};
+
+template<class T1, class T2>
+trait_struct tuple_element<0, pair<T1, T2>> {
+	using type = T1;
+};
+template<class T1, class T2>
+trait_struct tuple_element<1, pair<T1, T2>> {
+	using type = T2;
+};
 
 // template<size_t I, class T1, class T2>
 // constexpr tuple_element_t<I, pair<T1, T2>>& get(pair<T1, T2>&) noexcept;

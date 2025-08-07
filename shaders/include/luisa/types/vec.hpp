@@ -183,10 +183,10 @@ class tuple_size;
 template<size_t I, class E>
 class tuple_element;
 
-template<class T, uint64 N>
-trait_struct tuple_size<luisa::shader::vec<T, N>> : integral_constant<uint64, N>{};
+template<class T, size_t N>
+trait_struct tuple_size<luisa::shader::vec<T, N>> : integral_constant<size_t, N>{};
 
-template<size_t I, class T, uint64 N>
+template<size_t I, class T, size_t N>
 trait_struct tuple_element<I, luisa::shader::vec<T, N>> {
 	using type = T;
 };
