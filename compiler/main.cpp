@@ -746,11 +746,7 @@ Argument list:
     }
     // luisa::set_custom_logger(clangcxx_log);
     //////// Compile
-    struct MyConfig : public DirectXDeviceConfigExt {
-        bool LoadDXC() const noexcept { return false; }
-    };
     DeviceConfig config{
-        .extension = luisa::make_unique<MyConfig>(),
         .headless = true};
     BinaryIO *bin_io = nullptr;
     if (!ue_virtual_path.empty()) {

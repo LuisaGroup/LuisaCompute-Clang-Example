@@ -1,3 +1,4 @@
+add_rules("mode.release", "mode.debug", "mode.releasedbg")
 set_policy("build.ccache", not is_plat("windows"))
 set_policy("check.auto_ignore_flags", false)
 
@@ -17,24 +18,25 @@ if (is_os("windows")) then
 end
 
 lc_options = {
-    cpu_backend = false,
-    cuda_backend = true,
-    dx_backend = is_host("windows"),
-    vk_backend = is_host("windows"),
-    enable_cuda = true,
-    enable_api = false,
-    enable_clangcxx = true,
-    enable_dsl = true,
-    enable_gui = true,
-    enable_osl = false,
-    enable_ir = false,
-    enable_tests = false,
+    lc_cpu_backend = false,
+    lc_cuda_backend = true,
+    lc_dx_backend = is_host("windows"),
+    lc_vk_backend = is_host("windows"),
+    lc_enable_cuda = true,
+    lc_enable_api = false,
+    lc_enable_clangcxx = true,
+    lc_enable_dsl = true,
+    lc_enable_gui = true,
+    lc_enable_osl = false,
+    lc_enable_ir = false,
+    lc_enable_tests = false,
     lc_backend_lto = false,
-    vk_support = true,
-    metal_backend = false,
-    dx_cuda_interop = false,
+    lc_vk_support = true,
+    lc_metal_backend = false,
+    lc_dx_cuda_interop = false,
     lc_win_runtime = "MD",
-    sdk_dir = "LuisaCompute/SDKs",
+    lc_sdk_dir = "LuisaCompute/SDKs",
+    lc_dx_sdk_dir = "D:/DXAgilitySDK"
     -- toy_c_backend = true
 }
 includes("LuisaCompute")
